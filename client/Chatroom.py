@@ -1,6 +1,7 @@
 # coding=utf-8  
 
-import sys, icon
+import sys, html, re
+
 import resources.resources
 from PyQt5.QtWidgets import *
 from PyQt5.QtNetwork import *
@@ -10,10 +11,17 @@ from PyQt5.QtGui import *
 from ui.ui_main import Ui_MainWindow
 from ui.ui_config import Ui_Dialog as Ui_ConfigWindow
 
-class ConfigWindow(QDialog, Ui_ConfigWindow):                    #多重继承
+htmlString=r"""
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style="color:#666666;font-size:10pt;">{0}&nbsp;&nbsp;</span><span style="color:#C0C0C0;font-size:9pt;">{1}</span></p>
+<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style="font-size:14pt; color:#000000;">{2}</span></p>
+<span style=" -qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:8pt; font-size:7pt; color:#000000;"><br /></span>
+"""
+welcomeMsg='<p style="font-family:Consolas">You have entered the Chat Room</p><br />'
+maxiLength = 200
+
+class ConfigWindow(QDialog, Ui_ConfigWindow):
 
     def __init__(self):
-
         super().__init__()
         self.setupUi(self)
 
@@ -23,21 +31,18 @@ class ConfigWindow(QDialog, Ui_ConfigWindow):                    #多重继承
         self.setWindowIcon(QIcon(":/icon.ico"))
         self.yesButton.clicked.connect(self.accept)
         self.cancelButton.clicked.connect(self.reject)
+        self.returnData = lambda: {'Ip':self.ipEdit.text(),'Name':self.nameEdit.text()}
         
-    def setData(self,ipString,nameString):
-        
-        self.ipEdit.setText(ipString)
-        self.nameEdit.setText(nameString)
-        
-    def returnData(self):
-        
-        return {'Ip':self.ipEdit.text(),'Name':self.nameEdit.text()}
+    def setData(self, ipString='', nameString=''):
+        if ipString:
+            self.ipEdit.setText(ipString)
+        if nameString:
+            self.nameEdit.setText(nameString)
         
 
-class MainWindow(QMainWindow, Ui_MainWindow):                    #多重继承
+class MainWindow(QMainWindow, Ui_MainWindow):             
 
     def __init__(self):
-
         super().__init__()
         self.setupUi(self)
         self.inits()
@@ -45,68 +50,69 @@ class MainWindow(QMainWindow, Ui_MainWindow):                    #多重继承
         self.setWindowIcon(QIcon(':/icon.ico'))
 
     def inits(self):
-
         self.ipAddress=''
         self.userName='Anonymous'
         self.configWin=ConfigWindow()
         self.chatBox.setCursorWidth(0)
-        self.recvFlag=0
         
         self.cxn = QTcpSocket()
-        
         self.cxn.readyRead.connect(self.readMsg)
-        self.configButton.clicked.connect(self.configGo)
+
+        self.configButton.clicked.connect(self.goConfig)
         self.sendButton.clicked.connect(self.sendMsg)
         self.sendBox.installEventFilter(self)
 
-        
-    def configGo(self):
+    def goConfig(self):
         self.configWin.ipEdit.setFocus()
-        if self.configWin.exec() == QDialog.Accepted :
+
+        if self.configWin.exec() != QDialog.Accepted :
+            self.configWin.setData(self.ipAddress, self.userName)
+            return
+
+        else:
             rtnData = self.configWin.returnData()
-            # Verify IP Address
+
+            # Handle IP Address
             rtnAddr = rtnData['Ip'].replace('：', ':')
-            if not rtnAddr.split(':')[0]:
-                QMessageBox.warning(self,"Error",'Please enter the IP Address',QMessageBox.Ok,QMessageBox.Ok)
+            self.configWin.setData(rtnAddr)
+            # Verify IP Address
+            if not ':' in rtnAddr or not rtnAddr.split(':')[1].isdigit():
+                QMessageBox.warning(self,"Error",'Please enter the port number', QMessageBox.Ok, QMessageBox.Ok)
                 self.configWin.setData(self.ipAddress, self.userName)
                 return            
-            elif not ':' in rtnAddr or not rtnAddr.split(':')[1].isdigit():
-                QMessageBox.warning(self,"Error",'Please enter the port number',QMessageBox.Ok,QMessageBox.Ok)
+            elif not rtnAddr.split(':')[0]:
+                QMessageBox.warning(self,"Error",'Please enter the IP Address', QMessageBox.Ok, QMessageBox.Ok)
+                self.configWin.setData(self.ipAddress, self.userName)
+                return            
+
+            # Verify User Name
+            if '|' in rtnData['Name']:
+                QMessageBox.warning(self,"Error",'The user name contain illegal character: "|"', QMessageBox.Ok, QMessageBox.Ok)
                 self.configWin.setData(self.ipAddress, self.userName)
                 return
-            
-            if '|' in rtnData['Name']:
-                QMessageBox.warning(self,"Error",'The user name contain illegal character: "|"',QMessageBox.Ok,QMessageBox.Ok)
-                self.configWin.setData(self.ipAddress, self.userName)
-                return       
-            elif self.ipAddress == rtnData['Ip']:
+            elif self.ipAddress == rtnAddr:
                 self.userName = rtnData['Name']
                 return
             
-            self.ipAddress = rtnData['Ip'].replace('：', ':')
+            self.ipAddress = rtnAddr
             self.userName = rtnData['Name']
             if not self.userName:
                 self.userName = 'Anonymous'
 
             serverIP = self.ipAddress.split(':')[0]
             serverPort = self.ipAddress.split(':')[1]
-
             self.cxn.connectToHost(serverIP, int(serverPort))
             self.chatBox.clear()
             self.chatBox.insertHtml(welcomeMsg)
             self.sendBox.setFocus()
 
-        else :
-            self.configWin.setData(self.ipAddress,self.userName)
-            
-
-
     def readMsg(self):
         dataReceived = self.cxn.readAll()
         
         self.chatBox.moveCursor(QTextCursor.End)
-        recvString=bytes(dataReceived.data()).decode('utf8')
-        recvString=recvString.replace('\n',"<br />")
+        recvString = html.escape(bytes(dataReceived.data()).decode('utf8'), quote = True)
+        recvString = re.sub(r'\n\s*\n', '\n\n', recvString)
+        recvString = recvString.replace('\n',"<br />")
         self.chatBox.insertHtml(
             htmlString.format(
                 recvString.split('|')[0],
@@ -118,33 +124,29 @@ class MainWindow(QMainWindow, Ui_MainWindow):                    #多重继承
     
     def sendMsg(self):
         if not self.ipAddress:
-            QMessageBox.warning(self,"Error",'Please connect to the server first',QMessageBox.Ok,QMessageBox.Ok)
+            QMessageBox.warning(self,"Error",'Please connect to the server first', QMessageBox.Ok, QMessageBox.Ok)
+            return
+        elif len(self.sendBox.toPlainText()) > maxiLength:
+            QMessageBox.warning(self,"Error", f'Too long (> {maxiLength}) to send', QMessageBox.Ok, QMessageBox.Ok)
             return
         
-        msg=bytes(self.userName+'|'+self.sendBox.toPlainText(),encoding='utf-8')
+        msg = html.escape(self.sendBox.toPlainText(), quote = True)
+        msg = re.sub(r'\n\s*\n', '\n\n', msg)
+        msg = bytes(self.userName+'|' + msg, encoding='utf-8')
         self.cxn.write(msg)
         self.sendBox.clear()
         
     def eventFilter(self,obj,e):
-        
         if obj != self.sendBox or not self.configWin.enterCheck.isChecked():
             return False
         if e.type() == QEvent.KeyPress:
-            if e.key()==Qt.Key_Return or e.key()==Qt.Key_Enter:
+            if e.key() == Qt.Key_Return or e.key() == Qt.Key_Enter:
                 self.sendMsg()
                 return True
         return False
 
-htmlString=r"""
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style="color:#666666;font-size:10pt;">{0}&nbsp;&nbsp;</span><span style="color:#C0C0C0;font-size:9pt;">{1}</span></p>
-<p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style="font-size:14pt; color:#000000;">{2}</span></p>
-<span style=" -qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:8pt; font-size:7pt; color:#000000;"><br /></span>
-"""
-
-welcomeMsg='<p style="font-family:Consolas">You have entered the Chat Room</p><br />'
         
 if __name__ == '__main__':
-
         app = QApplication(sys.argv)
         ex = MainWindow()
         ex.show()
