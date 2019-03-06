@@ -1,4 +1,4 @@
-# coding=utf-8
+# -*- coding: utf-8 -*-
 
 import sys, time
 from PyQt5.QtCore import *

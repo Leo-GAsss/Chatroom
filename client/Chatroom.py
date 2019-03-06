@@ -1,4 +1,4 @@
-# coding=utf-8  
+# -*- coding: utf-8 -*-
 
 import sys, html, re
 
@@ -11,12 +11,12 @@ from PyQt5.QtGui import *
 from ui.ui_main import Ui_MainWindow
 from ui.ui_config import Ui_Dialog as Ui_ConfigWindow
 
-htmlString=r"""
+htmlString = r"""
 <p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style="color:#666666;font-size:10pt;">{0}&nbsp;&nbsp;</span><span style="color:#C0C0C0;font-size:9pt;">{1}</span></p>
 <p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style="font-size:14pt; color:#000000;">{2}</span></p>
 <span style=" -qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:8pt; font-size:7pt; color:#000000;"><br /></span>
 """
-welcomeMsg='<p style="font-family:Consolas">You have entered the Chat Room</p><br />'
+welcomeMsg = '<p style="font-family:Consolas">You have entered the Chat Room</p><br />'
 maxiLength = 200
 
 class ConfigWindow(QDialog, Ui_ConfigWindow):
