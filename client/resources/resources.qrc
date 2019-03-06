@@ -1,0 +1,6 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <file>icon/icon.ico</file>
+    <file alias="consolas.ttf">fonts/consolas_regular.ttf</file>
+</qresource>
+</RCC>
