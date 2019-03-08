@@ -75,7 +75,7 @@ class Ui_Dialog(object):
         self.cancelButton.setLocale(QtCore.QLocale(QtCore.QLocale.English, QtCore.QLocale.UnitedStates))
         self.cancelButton.setObjectName("cancelButton")
         self.enterCheck = QtWidgets.QCheckBox(Dialog)
-        self.enterCheck.setGeometry(QtCore.QRect(220, 120, 271, 41))
+        self.enterCheck.setGeometry(QtCore.QRect(220, 110, 321, 51))
         font = QtGui.QFont()
         font.setFamily("Consolas")
         font.setPointSize(12)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import sys, html, re
+import sys, html
 
 import resources.resources
 from PyQt5.QtWidgets import *
@@ -11,13 +11,13 @@ from PyQt5.QtGui import *
 from ui.ui_main import Ui_MainWindow
 from ui.ui_config import Ui_Dialog as Ui_ConfigWindow
 
-htmlString = r"""
+displayTemplate = r"""
 <p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style="color:#666666;font-size:10pt;">{0}&nbsp;&nbsp;</span><span style="color:#C0C0C0;font-size:9pt;">{1}</span></p>
 <p style=" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"><span style="font-size:14pt; color:#000000;">{2}</span></p>
 <span style=" -qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px; font-size:8pt; font-size:7pt; color:#000000;"><br /></span>
 """
 welcomeMsg = '<p style="font-family:Consolas">You have entered the Chat Room</p><br />'
-maxiLength = 200
+msgMaxiLength = 200
 
 class ConfigWindow(QDialog, Ui_ConfigWindow):
 
@@ -108,13 +108,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def readMsg(self):
         dataReceived = self.cxn.readAll()
-        
-        self.chatBox.moveCursor(QTextCursor.End)
-        recvString = html.escape(bytes(dataReceived.data()).decode('utf8'), quote = True)
-        recvString = re.sub(r'\n\s*\n', '\n\n', recvString)
+        recvString = bytes(dataReceived.data()).decode('utf8')
         recvString = recvString.replace('\n',"<br />")
+
+        self.chatBox.moveCursor(QTextCursor.End)
         self.chatBox.insertHtml(
-            htmlString.format(
+            displayTemplate.format(
                 recvString.split('|')[0],
                 QDateTime.currentDateTime().toString("hh:mm:ss MM/dd"),
                 recvString[recvString.find('|')+1:]
@@ -126,12 +125,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if not self.ipAddress:
             QMessageBox.warning(self,"Error",'Please connect to the server first', QMessageBox.Ok, QMessageBox.Ok)
             return
-        elif len(self.sendBox.toPlainText()) > maxiLength:
-            QMessageBox.warning(self,"Error", f'Too long (> {maxiLength}) to send', QMessageBox.Ok, QMessageBox.Ok)
+        elif len(self.sendBox.toPlainText()) > msgMaxiLength:
+            QMessageBox.warning(self,"Error", f'Too long (> {msgMaxiLength}) to send', QMessageBox.Ok, QMessageBox.Ok)
             return
         
-        msg = html.escape(self.sendBox.toPlainText(), quote = True)
-        msg = re.sub(r'\n\s*\n', '\n\n', msg)
+        msg = self.sendBox.toPlainText()
         msg = bytes(self.userName+'|' + msg, encoding='utf-8')
         self.cxn.write(msg)
         self.sendBox.clear()
