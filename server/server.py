@@ -19,30 +19,39 @@ class tcpServer(QObject):
         self.tcpServer.newConnection.connect(self.addConnection)
         self.cxns = []
 
-    def showPeerAddr(self, peerCxn: QTcpSocket) -> str:
-        return f"{peerCxn.peerAddress().toString()}:{peerCxn.peerPort()}"
+    def showCxnLog(self, peerCxn, log) -> str:
+        print(
+            QDateTime.currentDateTime().toString("hh:mm:ss yyyy-MM-dd\t"),
+            f"{peerCxn.peerAddress().toString()}:{peerCxn.peerPort()}",
+            log
+        )
 
     def addConnection(self):
         clientCxn = self.tcpServer.nextPendingConnection()
         self.cxns.append(clientCxn)
-        print(
-            QDateTime.currentDateTime().toString("hh:mm:ss yyyy-MM-dd\t"),
-            self.showPeerAddr(clientCxn), "Joined"
-        )
+        self.showCxnLog(clientCxn, "Joined")
 
         clientCxn.readyRead.connect(self.receiveMessage)
         clientCxn.disconnected.connect(self.removeConnection)
 
     def receiveMessage(self):  
         clientCxn = self.sender()
-        print(
-            QDateTime.currentDateTime().toString("hh:mm:ss yyyy-MM-dd\t"),
-            self.showPeerAddr(clientCxn), "Received Msg"
-        )
+        self.showCxnLog(clientCxn, "Received Msg")
 
-        recvMsg = bytes(clientCxn.readAll()).decode('utf-8')
+        try:
+            recvMsg = bytes(clientCxn.readAll()).decode('utf-8')
+        except:
+            clientCxn.write(bytes('System|Invalid encoding!', encoding="utf-8"))
+            self.showCxnLog(clientCxn, "Invalid encoding")
+            return
+        
         if len(recvMsg) > msgMaxiLength:
             clientCxn.write(bytes('System|Too long to send!', encoding="utf-8"))
+            self.showCxnLog(clientCxn, "Too long to send")
+            return
+        elif not '|' in recvMsg:
+            clientCxn.write(bytes('System|Invalid message format!', encoding="utf-8"))
+            self.showCxnLog(clientCxn, "Invalid msg format")
             return
 
         recvMsg = html.escape(recvMsg, quote = True)
@@ -52,10 +61,7 @@ class tcpServer(QObject):
 
     def removeConnection(self):
         clientCxn = self.sender()
-        print(
-            QDateTime.currentDateTime().toString("hh:mm:ss yyyy-MM-dd\t"),
-            self.showPeerAddr(clientCxn), "Disconnected"
-        )
+        self.showCxnLog(clientCxn, "Disconnected")
         self.cxns.remove(clientCxn)
 
 

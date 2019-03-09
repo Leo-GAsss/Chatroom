@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import sys, html
+import sys, os
 
 import resources.resources
 from PyQt5.QtWidgets import *
@@ -24,10 +24,10 @@ class ConfigWindow(QDialog, Ui_ConfigWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)
-
-        font = QFont(":/consolas.ttf");
-        font.setStyleHint(QFont.Monospace);
-        self.setFont(font);
+        
+        font = QFont(":/consolas.ttf")
+        font.setStyleHint(QFont.Monospace)
+        self.setFont(font)
         self.setWindowIcon(QIcon(":/icon.ico"))
         self.yesButton.clicked.connect(self.accept)
         self.cancelButton.clicked.connect(self.reject)
